@@ -1,0 +1,10 @@
+^D:\TIMETABLE-GEN\ENGINE\BUILD\CMAKEFILES\AC37002AB46E5E8739ABA13DA8B8680E\GENERATE.STAMP.RULE
+setlocal
+"C:\Program Files\CMake\bin\cmake.exe" -SD:/timetable-gen/engine -BD:/timetable-gen/engine/build --check-stamp-list CMakeFiles/generate.stamp.list --vs-solution-file D:/timetable-gen/engine/build/TimetableScheduler.sln
+if %errorlevel% neq 0 goto :cmEnd
+:cmEnd
+endlocal & call :cmErrorLevel %errorlevel% & goto :cmDone
+:cmErrorLevel
+exit /b %1
+:cmDone
+if %errorlevel% neq 0 goto :VCEnd

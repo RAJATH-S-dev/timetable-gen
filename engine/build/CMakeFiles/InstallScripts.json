@@ -1,0 +1,7 @@
+{
+	"InstallScripts" : 
+	[
+		"D:/timetable-gen/engine/build/cmake_install.cmake"
+	],
+	"Parallel" : false
+}

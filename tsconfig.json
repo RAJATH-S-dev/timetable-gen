@@ -19,13 +19,15 @@
       }
     ],
     "paths": {
-      "@/*": ["./*"]
+      "@/*": ["./src/*"],
+      "@engine/*": ["./engine/build/*"]
     }
   },
   "include": [
     "next-env.d.ts",
     "**/*.ts",
     "**/*.tsx",
+    "src/types/**/*.d.ts" ,// Add this line
     ".next/types/**/*.ts",
     ".next/dev/types/**/*.ts",
     "**/*.mts"
