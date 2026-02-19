@@ -3,14 +3,14 @@ import { createClient } from '@/lib/supabase/client'
 // 1. Authentication: Sign Up
 export async function signUpDepartment(email: string, password: string) {
   const supabase = createClient()
-  
+
   const { data, error } = await supabase.auth.signUp({
     email,
     password,
     options: {
       data: {
-        department_id: 'ISE', 
-        college: 'MITM'       
+        department_id: 'ISE',
+        college: 'MITM'
       }
     }
   })
@@ -29,6 +29,12 @@ export async function signInAdmin(email: string, password: string) {
 
   if (error) throw error
   return data
+}
+
+export async function signOutAdmin() {
+  const supabase = createClient()
+  const { error } = await supabase.auth.signOut()
+  if (error) throw error
 }
 
 // 3. Data Bridge: The missing function causing your error
