@@ -14,7 +14,7 @@ export async function updateTeacherAction(id: string, updates: any) {
   if (!error) revalidatePath('/faculty');
 }
 
-export async function assignSubjectAction(teacherId: string, subjectId: string) {
+export async function assignSubjectAction(teacherId: string, subjectId: string, section: string = 'A') {
   const supabase = await createClient();
 
   await supabase
@@ -23,6 +23,7 @@ export async function assignSubjectAction(teacherId: string, subjectId: string) 
       teacher_id: teacherId,
       subject_id: subjectId,
       department_id: 'MIT-ISE',  // ← fixed
+      section,
     });
 
   revalidatePath('/faculty');

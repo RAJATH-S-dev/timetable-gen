@@ -170,6 +170,7 @@ struct Subject {
 };
 struct Room    { std::string id, room_name, room_type; int capacity; };
 struct Assignment { std::string teacher_id, subject_id; };
+struct BlockedSlot { std::string teacher_id; int day, slot; };
 
 struct ScheduleInput {
     std::string department_id;
@@ -177,6 +178,7 @@ struct ScheduleInput {
     std::vector<Subject>    subjects;
     std::vector<Room>       rooms;
     std::vector<Assignment> assignments;
+    std::vector<BlockedSlot> blocked_slots;
     int num_days, slots_per_day, lunch_slot_index, time_limit_seconds;
 };
 
@@ -223,6 +225,10 @@ ScheduleInput parseInput(const std::string& js) {
     for (auto* v : root->getArray("assignments"))
         inp.assignments.push_back({v->getString("teacher_id"),
                                    v->getString("subject_id")});
+    for (auto* v : root->getArray("blocked_slots"))
+        inp.blocked_slots.push_back({v->getString("teacher_id"),
+                                     v->getInt("day"),
+                                     v->getInt("slot")});
     delete root;
     return inp;
 }
@@ -341,6 +347,16 @@ public:
             if (!inp.teachers[t].is_available)
                 for (int s=0;s<S;s++) for (int d=0;d<D;d++) for (int p=0;p<P;p++)
                     model.FixVariable(X[t][s][d][p], false);
+
+        // ── HC9: Cross-section teacher blocking ──────────────────────────
+        for (const auto& bs : inp.blocked_slots) {
+            int ti = -1;
+            for (int i = 0; i < T; i++)
+                if (inp.teachers[i].id == bs.teacher_id) { ti = i; break; }
+            if (ti >= 0 && bs.day >= 0 && bs.day < D && bs.slot >= 0 && bs.slot < P)
+                for (int s = 0; s < S; s++)
+                    model.FixVariable(X[ti][s][bs.day][bs.slot], false);
+        }
 
         // ── HC8: Lab pair coupling (with auxiliary L variables) ─────────────
         //

@@ -37,6 +37,7 @@ export function AssignModal({ teacher, subjects, isOpen, onClose }: AssignModalP
   const [selectedId, setSelectedId] = React.useState("")
   const [loading, setLoading] = React.useState(false)
   const [semesterFilter, setSemesterFilter] = React.useState<number | "all">("all")
+  const [selectedSection, setSelectedSection] = React.useState<string>("A")
 
   const selectedSubject = subjects.find((s) => s.id === selectedId)
 
@@ -51,10 +52,11 @@ export function AssignModal({ teacher, subjects, isOpen, onClose }: AssignModalP
   const handleAssign = async () => {
     if (!teacher || !selectedId) return
     setLoading(true)
-    await assignSubjectAction(teacher.id, selectedId)
+    await assignSubjectAction(teacher.id, selectedId, selectedSection)
     setLoading(false)
     setSelectedId("")
     setSemesterFilter("all")
+    setSelectedSection("A")
     onClose()
   }
 
@@ -66,6 +68,27 @@ export function AssignModal({ teacher, subjects, isOpen, onClose }: AssignModalP
         </DialogHeader>
         <div className="grid gap-4 py-4">
 
+          {/* Section Picker */}
+          <div className="flex items-center gap-2">
+            <label className="text-xs font-bold text-stone-500 uppercase tracking-wider whitespace-nowrap">
+              Section
+            </label>
+            <div className="flex flex-wrap gap-1.5">
+              {['A', 'B', 'C', 'D'].map(sec => (
+                <button
+                  key={sec}
+                  onClick={() => setSelectedSection(sec)}
+                  className={`px-2.5 py-1 rounded text-xs font-semibold transition-all border ${selectedSection === sec
+                    ? "bg-[#2D3436] text-white border-[#2D3436]"
+                    : "bg-white text-stone-600 border-stone-300 hover:border-stone-400"
+                    }`}
+                >
+                  {sec}
+                </button>
+              ))}
+            </div>
+          </div>
+
           {/* Semester Filter */}
           <div className="flex items-center gap-2">
             <label className="text-xs font-bold text-stone-500 uppercase tracking-wider whitespace-nowrap">
@@ -75,8 +98,8 @@ export function AssignModal({ teacher, subjects, isOpen, onClose }: AssignModalP
               <button
                 onClick={() => { setSemesterFilter("all"); setSelectedId(""); }}
                 className={`px-2.5 py-1 rounded text-xs font-semibold transition-all border ${semesterFilter === "all"
-                    ? "bg-[#2D3436] text-white border-[#2D3436]"
-                    : "bg-white text-stone-600 border-stone-300 hover:border-stone-400"
+                  ? "bg-[#2D3436] text-white border-[#2D3436]"
+                  : "bg-white text-stone-600 border-stone-300 hover:border-stone-400"
                   }`}
               >
                 All
@@ -86,8 +109,8 @@ export function AssignModal({ teacher, subjects, isOpen, onClose }: AssignModalP
                   key={sem}
                   onClick={() => { setSemesterFilter(sem); setSelectedId(""); }}
                   className={`px-2.5 py-1 rounded text-xs font-semibold transition-all border ${semesterFilter === sem
-                      ? "bg-[#2D3436] text-white border-[#2D3436]"
-                      : "bg-white text-stone-600 border-stone-300 hover:border-stone-400"
+                    ? "bg-[#2D3436] text-white border-[#2D3436]"
+                    : "bg-white text-stone-600 border-stone-300 hover:border-stone-400"
                     }`}
                 >
                   {sem}

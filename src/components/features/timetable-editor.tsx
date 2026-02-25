@@ -40,6 +40,7 @@ interface SubjectOption {
   id: string;
   code: string;
   title: string;
+  semester?: number;
 }
 
 interface EditorProps {
@@ -80,6 +81,7 @@ export default function TimetableEditor({
   const [loadingSubjects, setLoadingSubjects] = useState(false);
   const [selectedSubjectId, setSelectedSubjectId] = useState<string>("");
   const [subjectSearch, setSubjectSearch] = useState("");
+  const [semesterPicker, setSemesterPicker] = useState<number | "all">("all");
 
   // Swap state
   const [swapSource, setSwapSource] = useState<{ day: number; slot: number; data: SlotData | null } | null>(null);
@@ -99,8 +101,9 @@ export default function TimetableEditor({
 
       const { data } = await supabase
         .from("subjects")
-        .select("id, code, title")
+        .select("id, code, title, semester")
         .eq("department_id", departmentId)
+        .order("semester")
         .order("code");
 
       setSubjects((data ?? []) as SubjectOption[]);
@@ -146,6 +149,7 @@ export default function TimetableEditor({
     setSelectedTeacherId("");
     setSelectedSubjectId("");
     setSubjectSearch("");
+    setSemesterPicker("all");
     setIsPanelOpen(true);
   };
 
@@ -214,6 +218,30 @@ export default function TimetableEditor({
     }
   };
 
+  // Unlock a locked slot so it can be cleared
+  const handleUnlockSlot = async () => {
+    if (!selectedCell?.data?.slotId) return;
+
+    const toastId = toast.loading("Unlocking slot...");
+    try {
+      const { error } = await supabase
+        .from("timetable_slots")
+        .update({ is_locked: false })
+        .eq("id", selectedCell.data.slotId);
+
+      if (error) throw error;
+
+      toast.success("Slot unlocked! It will be removed on next Clear.", { id: toastId });
+      setIsPanelOpen(false);
+      onRefresh();
+    } catch (err: any) {
+      toast.error("Failed to unlock slot", {
+        id: toastId,
+        description: err.message,
+      });
+    }
+  };
+
   // Place subject + teacher in empty slot (new row)
   const handlePlaceInEmptySlot = async () => {
     if (!selectedCell || !selectedSubjectId || !selectedTeacherId) return;
@@ -257,11 +285,12 @@ export default function TimetableEditor({
   const DAYS_DISPLAY = ["Mon", "Tue", "Wed", "Thu", "Fri"];
   const selectedTeacher = teachers.find((t) => t.id === selectedTeacherId);
 
-  // Filter subjects by search text
+  // Filter subjects by semester and search text
   const filteredSubjects = subjects.filter(
     (s) =>
-      s.code.toLowerCase().includes(subjectSearch.toLowerCase()) ||
-      s.title.toLowerCase().includes(subjectSearch.toLowerCase())
+      (semesterPicker === "all" || s.semester === semesterPicker) &&
+      (s.code.toLowerCase().includes(subjectSearch.toLowerCase()) ||
+        s.title.toLowerCase().includes(subjectSearch.toLowerCase()))
   );
 
   return (
@@ -324,6 +353,22 @@ export default function TimetableEditor({
                       </div>
                     ) : (
                       <>
+                        {/* Semester filter pills */}
+                        <div className="flex flex-wrap items-center gap-1.5 mb-2">
+                          <span className="text-[10px] font-bold text-stone-400 uppercase tracking-wider mr-1">Sem</span>
+                          {["all" as const, ...([...new Set(subjects.map(s => s.semester).filter(Boolean))].sort((a, b) => (a as number) - (b as number)))].map(s => (
+                            <button
+                              key={String(s)}
+                              onClick={() => setSemesterPicker(s === "all" ? "all" : s as number)}
+                              className={`px-2 py-0.5 rounded text-[10px] font-bold border transition-all ${semesterPicker === s
+                                  ? "bg-[#2D3436] text-white border-[#2D3436]"
+                                  : "bg-white text-stone-500 border-stone-300 hover:border-stone-400"
+                                }`}
+                            >
+                              {s === "all" ? "All" : s}
+                            </button>
+                          ))}
+                        </div>
                         <input
                           type="text"
                           placeholder="Search by code or title..."
@@ -340,8 +385,8 @@ export default function TimetableEditor({
                                 key={s.id}
                                 onClick={() => setSelectedSubjectId(s.id === selectedSubjectId ? "" : s.id)}
                                 className={`w-full text-left px-3 py-2 text-sm flex items-center gap-2 transition-colors border-b border-stone-100 last:border-b-0 ${selectedSubjectId === s.id
-                                    ? "bg-[#4834D4]/10 text-[#4834D4]"
-                                    : "hover:bg-stone-50 text-[#2D3436]"
+                                  ? "bg-[#4834D4]/10 text-[#4834D4]"
+                                  : "hover:bg-stone-50 text-[#2D3436]"
                                   }`}
                               >
                                 <span className="font-mono text-xs font-bold min-w-[100px]">{s.code}</span>
@@ -376,8 +421,8 @@ export default function TimetableEditor({
                               key={t.id}
                               onClick={() => setSelectedTeacherId(t.id === selectedTeacherId ? "" : t.id)}
                               className={`px-3 py-1.5 rounded text-sm font-medium transition-all border ${selectedTeacherId === t.id
-                                  ? "bg-[#4834D4] text-white border-[#4834D4]"
-                                  : "bg-white text-[#2D3436] border-stone-300 hover:border-[#4834D4] hover:text-[#4834D4]"
+                                ? "bg-[#4834D4] text-white border-[#4834D4]"
+                                : "bg-white text-[#2D3436] border-stone-300 hover:border-[#4834D4] hover:text-[#4834D4]"
                                 }`}
                             >
                               {t.name}
@@ -430,6 +475,14 @@ export default function TimetableEditor({
                         </span>
                       )}
                     </div>
+                    {selectedCell.data?.isLocked && (
+                      <button
+                        onClick={handleUnlockSlot}
+                        className="mt-2 w-full py-1.5 bg-amber-50 hover:bg-amber-100 text-amber-700 text-xs font-bold rounded border border-amber-300 transition-colors"
+                      >
+                        🔓 Unlock this slot
+                      </button>
+                    )}
                   </div>
 
                   {/* Teacher Selector */}
@@ -453,8 +506,8 @@ export default function TimetableEditor({
                             key={t.id}
                             onClick={() => setSelectedTeacherId(t.id === selectedTeacherId ? "" : t.id)}
                             className={`px-3 py-1.5 rounded text-sm font-medium transition-all border ${selectedTeacherId === t.id
-                                ? "bg-[#4834D4] text-white border-[#4834D4]"
-                                : "bg-white text-[#2D3436] border-stone-300 hover:border-[#4834D4] hover:text-[#4834D4]"
+                              ? "bg-[#4834D4] text-white border-[#4834D4]"
+                              : "bg-white text-[#2D3436] border-stone-300 hover:border-[#4834D4] hover:text-[#4834D4]"
                               }`}
                           >
                             {t.name}

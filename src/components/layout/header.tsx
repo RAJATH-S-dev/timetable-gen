@@ -1,13 +1,16 @@
 'use client'
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { Search, Plus, LogOut } from 'lucide-react'
-import FileUploadModal from '@/components/features/file-upload-modal'
+import { Search, LogOut, KeyRound } from 'lucide-react'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
-import { signOutAdmin } from '@/lib/supabase/actions'
+import { signOutAdmin, changePassword } from '@/lib/supabase/actions'
 
 export function Header() {
-  const [isModalOpen, setIsModalOpen] = useState(false)
+  const [showChangePassword, setShowChangePassword] = useState(false)
+  const [newPassword, setNewPassword] = useState('')
+  const [confirmPassword, setConfirmPassword] = useState('')
+  const [pwLoading, setPwLoading] = useState(false)
+  const [pwMessage, setPwMessage] = useState<{ type: 'ok' | 'err'; text: string } | null>(null)
   const router = useRouter()
 
   const handleSignOut = async () => {
@@ -16,6 +19,30 @@ export function Header() {
       router.push('/login')
     } catch (error) {
       console.error('Error signing out:', error)
+    }
+  }
+
+  const handleChangePassword = async () => {
+    setPwMessage(null)
+    if (newPassword.length < 6) {
+      setPwMessage({ type: 'err', text: 'Password must be at least 6 characters' })
+      return
+    }
+    if (newPassword !== confirmPassword) {
+      setPwMessage({ type: 'err', text: 'Passwords do not match' })
+      return
+    }
+    setPwLoading(true)
+    try {
+      await changePassword(newPassword)
+      setPwMessage({ type: 'ok', text: 'Password changed successfully!' })
+      setNewPassword('')
+      setConfirmPassword('')
+      setTimeout(() => { setShowChangePassword(false); setPwMessage(null) }, 1500)
+    } catch (err: any) {
+      setPwMessage({ type: 'err', text: err?.message || 'Failed to change password' })
+    } finally {
+      setPwLoading(false)
     }
   }
 
@@ -57,29 +84,8 @@ export function Header() {
       </div>
 
       <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
-        {/* Bulk Ingest */}
-        <button
-          onClick={() => setIsModalOpen(true)}
-          style={{
-            display: 'flex', alignItems: 'center', gap: 6,
-            padding: '7px 16px',
-            background: '#2D3436', border: 'none', borderRadius: 4,
-            fontSize: 12, fontWeight: 700, color: '#FFFDF5',
-            cursor: 'pointer', fontFamily: "'Georgia', serif",
-            transition: 'background 0.2s',
-          }}
-          onMouseEnter={e => e.currentTarget.style.background = '#3D4D4F'}
-          onMouseLeave={e => e.currentTarget.style.background = '#2D3436'}
-        >
-          <Plus size={14} />
-          Bulk Ingest
-        </button>
-
-        {/* Divider */}
-        <div style={{ width: 1, height: 24, background: '#E2D9C5' }} />
-
         {/* User */}
-        <Popover>
+        <Popover onOpenChange={(open) => { if (!open) { setShowChangePassword(false); setPwMessage(null) } }}>
           <PopoverTrigger asChild>
             <button style={{
               display: 'flex', alignItems: 'center', gap: 10,
@@ -98,29 +104,110 @@ export function Header() {
               }}>IS</div>
             </button>
           </PopoverTrigger>
-          <PopoverContent align="end" style={{ width: 140, padding: 4 }}>
-            <button
-              onClick={handleSignOut}
-              style={{
-                display: 'flex', alignItems: 'center', gap: 8,
-                width: '100%', padding: '8px 12px',
-                fontSize: 12, color: '#C0392B', fontWeight: 600,
-                background: 'none', border: 'none', borderRadius: 4,
-                cursor: 'pointer', fontFamily: "'Georgia', serif",
-                textAlign: 'left',
-                transition: 'background 0.2s',
-              }}
-              onMouseEnter={e => e.currentTarget.style.background = '#FFF5F5'}
-              onMouseLeave={e => e.currentTarget.style.background = 'none'}
-            >
-              <LogOut size={14} />
-              Sign Out
-            </button>
+          <PopoverContent align="end" style={{ width: showChangePassword ? 260 : 180, padding: 4 }}>
+            {showChangePassword ? (
+              <div style={{ padding: '8px 8px 4px' }}>
+                <p style={{ fontSize: 11, fontWeight: 700, color: '#2D3436', margin: '0 0 10px', textTransform: 'uppercase', letterSpacing: 0.8 }}>
+                  Change Password
+                </p>
+                <input
+                  type="password"
+                  placeholder="New password"
+                  value={newPassword}
+                  onChange={(e) => setNewPassword(e.target.value)}
+                  style={{
+                    width: '100%', padding: '7px 10px', fontSize: 12,
+                    border: '1.5px solid #E2D9C5', borderRadius: 4,
+                    background: '#FFFDF5', color: '#2D3436', outline: 'none',
+                    marginBottom: 6, fontFamily: "'Georgia', serif",
+                  }}
+                />
+                <input
+                  type="password"
+                  placeholder="Confirm password"
+                  value={confirmPassword}
+                  onChange={(e) => setConfirmPassword(e.target.value)}
+                  style={{
+                    width: '100%', padding: '7px 10px', fontSize: 12,
+                    border: '1.5px solid #E2D9C5', borderRadius: 4,
+                    background: '#FFFDF5', color: '#2D3436', outline: 'none',
+                    marginBottom: 8, fontFamily: "'Georgia', serif",
+                  }}
+                />
+                {pwMessage && (
+                  <p style={{
+                    fontSize: 11, fontWeight: 600, margin: '0 0 8px',
+                    color: pwMessage.type === 'ok' ? '#27AE60' : '#C0392B',
+                  }}>
+                    {pwMessage.text}
+                  </p>
+                )}
+                <div style={{ display: 'flex', gap: 6 }}>
+                  <button
+                    onClick={() => { setShowChangePassword(false); setPwMessage(null) }}
+                    style={{
+                      flex: 1, padding: '6px 0', fontSize: 11, fontWeight: 600,
+                      background: 'none', border: '1px solid #C8C0A8', borderRadius: 3,
+                      cursor: 'pointer', color: '#8B7D6B', fontFamily: "'Georgia', serif",
+                    }}
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    onClick={handleChangePassword}
+                    disabled={pwLoading}
+                    style={{
+                      flex: 1, padding: '6px 0', fontSize: 11, fontWeight: 700,
+                      background: '#2D3436', border: 'none', borderRadius: 3,
+                      cursor: pwLoading ? 'not-allowed' : 'pointer',
+                      color: '#FFFDF5', fontFamily: "'Georgia', serif",
+                    }}
+                  >
+                    {pwLoading ? 'Saving…' : 'Update'}
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <>
+                <button
+                  onClick={() => setShowChangePassword(true)}
+                  style={{
+                    display: 'flex', alignItems: 'center', gap: 8,
+                    width: '100%', padding: '8px 12px',
+                    fontSize: 12, color: '#2D3436', fontWeight: 600,
+                    background: 'none', border: 'none', borderRadius: 4,
+                    cursor: 'pointer', fontFamily: "'Georgia', serif",
+                    textAlign: 'left',
+                    transition: 'background 0.2s',
+                  }}
+                  onMouseEnter={e => e.currentTarget.style.background = '#F0EBE0'}
+                  onMouseLeave={e => e.currentTarget.style.background = 'none'}
+                >
+                  <KeyRound size={14} />
+                  Change Password
+                </button>
+                <button
+                  onClick={handleSignOut}
+                  style={{
+                    display: 'flex', alignItems: 'center', gap: 8,
+                    width: '100%', padding: '8px 12px',
+                    fontSize: 12, color: '#C0392B', fontWeight: 600,
+                    background: 'none', border: 'none', borderRadius: 4,
+                    cursor: 'pointer', fontFamily: "'Georgia', serif",
+                    textAlign: 'left',
+                    transition: 'background 0.2s',
+                  }}
+                  onMouseEnter={e => e.currentTarget.style.background = '#FFF5F5'}
+                  onMouseLeave={e => e.currentTarget.style.background = 'none'}
+                >
+                  <LogOut size={14} />
+                  Sign Out
+                </button>
+              </>
+            )}
           </PopoverContent>
         </Popover>
       </div>
-
-      <FileUploadModal isOpen={isModalOpen} setIsOpen={setIsModalOpen} />
     </header>
   )
 }

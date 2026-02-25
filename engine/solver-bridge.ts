@@ -38,6 +38,7 @@ export interface ScheduleInput {
   subjects: Subject[];
   rooms: Room[];
   assignments: TeacherSubjectAssignment[];
+  blocked_slots?: { teacher_id: string; day: number; slot: number }[];
   days_per_week: number;
   slots_per_day: number;
   lunch_slot_index: number;
@@ -45,15 +46,15 @@ export interface ScheduleInput {
 }
 
 export interface ScheduledSlot {
-  teacher_id:      string;
-  subject_id:      string;
-  room_id:         string;
-  day_of_week:     number;
-  slot_index:      number;
-  slot_status:     string;
-  is_lab:          boolean;   // true if this slot is part of a lab pair
+  teacher_id: string;
+  subject_id: string;
+  room_id: string;
+  day_of_week: number;
+  slot_index: number;
+  slot_status: string;
+  is_lab: boolean;   // true if this slot is part of a lab pair
   is_double_start: boolean;   // true if this is the FIRST slot of a lab pair
-  metadata:        { conflict_reason: string };
+  metadata: { conflict_reason: string };
 }
 
 export interface ScheduleOutput {
@@ -93,9 +94,9 @@ export async function runScheduler(input: ScheduleInput): Promise<ScheduleOutput
 
     console.log('[solver-bridge] Scheduler path:', schedulerPath);
     console.log('[solver-bridge] Input summary:', {
-      teachers:    input.teachers.length,
-      subjects:    input.subjects.map(s => ({ code: s.code, weekly_credits: s.weekly_credits, practical_hours: s.practical_hours })),
-      rooms:       input.rooms.length,
+      teachers: input.teachers.length,
+      subjects: input.subjects.map(s => ({ code: s.code, weekly_credits: s.weekly_credits, practical_hours: s.practical_hours })),
+      rooms: input.rooms.length,
       assignments: input.assignments.length,
     });
 
@@ -113,8 +114,8 @@ export async function runScheduler(input: ScheduleInput): Promise<ScheduleOutput
       child.kill();
       resolve({
         success: false,
-        status:  'TIMEOUT',
-        slots:   [],
+        status: 'TIMEOUT',
+        slots: [],
         conflict_log: [],
         error: `Solver exceeded ${input.time_limit_seconds + 5}s and was killed`,
       });
@@ -126,8 +127,8 @@ export async function runScheduler(input: ScheduleInput): Promise<ScheduleOutput
       if (code !== 0) {
         resolve({
           success: false,
-          status:  'ERROR',
-          slots:   [],
+          status: 'ERROR',
+          slots: [],
           conflict_log: [],
           error: `Solver exited with code ${code}. stderr: ${stderr}`,
         });
@@ -140,8 +141,8 @@ export async function runScheduler(input: ScheduleInput): Promise<ScheduleOutput
       } catch {
         resolve({
           success: false,
-          status:  'PARSE_ERROR',
-          slots:   [],
+          status: 'PARSE_ERROR',
+          slots: [],
           conflict_log: [],
           error: `Failed to parse solver output: ${stdout}`,
         });
@@ -152,8 +153,8 @@ export async function runScheduler(input: ScheduleInput): Promise<ScheduleOutput
       clearTimeout(timeout);
       resolve({
         success: false,
-        status:  'SPAWN_ERROR',
-        slots:   [],
+        status: 'SPAWN_ERROR',
+        slots: [],
         conflict_log: [],
         error: `Failed to start scheduler: ${err.message}`,
       });
@@ -181,7 +182,7 @@ export function slotIndexToTime(
   const startMins = startHour * 60 + slotIndex * slotDurationMinutes;
   return {
     start_time: fmt(startMins),
-    end_time:   fmt(startMins + slotDurationMinutes),
+    end_time: fmt(startMins + slotDurationMinutes),
   };
 }
 

@@ -122,13 +122,14 @@ export default function TimetableClient({ departmentId }: Props) {
   const gridRef = useRef<HTMLDivElement>(null);
   const [editingHeader, setEditingHeader] = useState(false);
   const [selectedSemester, setSelectedSemester] = useState<number>(1);
+  const [selectedSection, setSelectedSection] = useState<string>('A');
 
   const fetchTimetable = useCallback(async () => {
     setLoading(true);
     setError(null);
     try {
       const [schedRes, collRes] = await Promise.all([
-        fetch(`/api/schedule?department_id=${departmentId}&t=${Date.now()}`, {
+        fetch(`/api/schedule?department_id=${departmentId}&section=${selectedSection}&t=${Date.now()}`, {
           cache: "no-store",
           headers: { "Cache-Control": "no-cache" },
         }),
@@ -149,7 +150,7 @@ export default function TimetableClient({ departmentId }: Props) {
     } finally {
       setLoading(false);
     }
-  }, [departmentId]);
+  }, [departmentId, selectedSection]);
 
   useEffect(() => { fetchTimetable(); }, [fetchTimetable]);
 
@@ -161,7 +162,7 @@ export default function TimetableClient({ departmentId }: Props) {
       const res = await fetch("/api/schedule", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ department_id: departmentId, semester: selectedSemester }),
+        body: JSON.stringify({ department_id: departmentId, semester: selectedSemester, section: selectedSection }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error ?? "Solver failed");
@@ -180,7 +181,7 @@ export default function TimetableClient({ departmentId }: Props) {
     setError(null);
     setStatus(null);
     try {
-      const res = await fetch(`/api/schedule?department_id=${departmentId}`, { method: "DELETE" });
+      const res = await fetch(`/api/schedule?department_id=${departmentId}&section=${selectedSection}`, { method: "DELETE" });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error ?? "Failed to clear");
       setStatus("✓ Timetable cleared");
@@ -225,6 +226,19 @@ export default function TimetableClient({ departmentId }: Props) {
             >
               {[1, 2, 3, 4, 5, 6, 7, 8].map(s => (
                 <option key={s} value={s}>Semester {s}</option>
+              ))}
+            </select>
+          </div>
+
+          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+            <label style={{ fontSize: 11, fontWeight: 700, color: "#8B7D6B" }}>SEC</label>
+            <select
+              value={selectedSection}
+              onChange={e => setSelectedSection(e.target.value)}
+              style={{ padding: "7px 10px", border: "1.5px solid #2D3436", borderRadius: 4, fontSize: 12, background: "#FFFDF5", color: "#2D3436", cursor: "pointer" }}
+            >
+              {['A', 'B', 'C', 'D'].map(s => (
+                <option key={s} value={s}>Section {s}</option>
               ))}
             </select>
           </div>
@@ -274,50 +288,6 @@ export default function TimetableClient({ departmentId }: Props) {
             style={{ padding: "8px 14px", background: "transparent", border: "1.5px solid #27AE60", borderRadius: 4, fontSize: 12, fontWeight: 600, color: "#27AE60", cursor: downloadingPdf ? "not-allowed" : "pointer" }}
           >
             {downloadingPdf ? "Exporting…" : "📄 Download PDF"}
-          </button>
-
-          <button
-            onClick={async () => {
-              if (!gridRef.current) return;
-              setDownloadingPdf(true);
-              try {
-                const canvas = await html2canvas(gridRef.current, {
-                  scale: 2,
-                  useCORS: true,
-                  backgroundColor: "#F0EBE0",
-                });
-                const imgData = canvas.toDataURL("image/png");
-                const pdf = new jsPDF({
-                  orientation: "landscape",
-                  unit: "px",
-                  format: [canvas.width, canvas.height],
-                });
-                pdf.addImage(imgData, "PNG", 0, 0, canvas.width, canvas.height);
-                const blob = pdf.output("blob");
-                const file = new File(
-                  [blob],
-                  `timetable_${departmentId}_${new Date().toISOString().slice(0, 10)}.pdf`,
-                  { type: "application/pdf" }
-                );
-                // Use Google Drive upload via share target / picker
-                const url = URL.createObjectURL(file);
-                const link = document.createElement("a");
-                link.href = url;
-                link.download = file.name;
-                link.click(); // download locally first
-                URL.revokeObjectURL(url);
-                // Open Google Drive for upload
-                window.open("https://drive.google.com/drive/my-drive", "_blank");
-              } catch (err) {
-                console.error("Upload failed", err);
-              } finally {
-                setDownloadingPdf(false);
-              }
-            }}
-            disabled={downloadingPdf || loading}
-            style={{ padding: "8px 14px", background: "transparent", border: "1.5px solid #4285F4", borderRadius: 4, fontSize: 12, fontWeight: 600, color: "#4285F4", cursor: downloadingPdf ? "not-allowed" : "pointer" }}
-          >
-            ☁️ Upload to Drive
           </button>
         </div>
       </div>

@@ -3,7 +3,7 @@
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
-import { signInAdmin } from '@/lib/supabase/actions'
+import { signInAdmin, resetPasswordForEmail } from '@/lib/supabase/actions'
 
 export default function LoginPage() {
   const [email, setEmail] = useState('')
@@ -11,7 +11,25 @@ export default function LoginPage() {
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState('')
   const [showPassword, setShowPassword] = useState(false)
+  const [forgotMode, setForgotMode] = useState(false)
+  const [resetEmail, setResetEmail] = useState('')
+  const [resetStatus, setResetStatus] = useState<string | null>(null)
+  const [resetLoading, setResetLoading] = useState(false)
   const router = useRouter()
+
+  const handleSendReset = async () => {
+    if (!resetEmail) return
+    setResetLoading(true)
+    setResetStatus(null)
+    try {
+      await resetPasswordForEmail(resetEmail)
+      setResetStatus('✓ Password reset email sent! Check your inbox.')
+    } catch (err: any) {
+      setResetStatus(err?.message || 'Failed to send reset email')
+    } finally {
+      setResetLoading(false)
+    }
+  }
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -170,6 +188,75 @@ export default function LoginPage() {
               {isLoading ? 'Signing In…' : 'Sign In →'}
             </button>
           </form>
+
+          {/* Forgot Password */}
+          <div style={{ textAlign: 'center', marginTop: 14 }}>
+            {!forgotMode ? (
+              <button
+                type="button"
+                onClick={() => setForgotMode(true)}
+                style={{
+                  background: 'none', border: 'none', cursor: 'pointer',
+                  fontSize: 12, color: '#8B7D6B', fontWeight: 600,
+                  fontFamily: "'Georgia', serif", textDecoration: 'underline',
+                }}
+              >
+                Forgot Password?
+              </button>
+            ) : (
+              <div style={{
+                marginTop: 8, padding: '14px 16px',
+                background: '#F8F4EB', borderRadius: 4, border: '1px solid #E2D9C5',
+                textAlign: 'left',
+              }}>
+                <p style={{ fontSize: 11, fontWeight: 700, color: '#2D3436', margin: '0 0 8px', textTransform: 'uppercase', letterSpacing: 0.8 }}>
+                  Reset Password
+                </p>
+                <input
+                  type="email"
+                  placeholder="Enter your email address"
+                  value={resetEmail}
+                  onChange={(e) => setResetEmail(e.target.value)}
+                  style={{ ...inputStyle, marginBottom: 8 }}
+                  className="login-input"
+                />
+                {resetStatus && (
+                  <p style={{
+                    fontSize: 11, fontWeight: 600, margin: '0 0 8px',
+                    color: resetStatus.startsWith('✓') ? '#27AE60' : '#C0392B',
+                  }}>
+                    {resetStatus}
+                  </p>
+                )}
+                <div style={{ display: 'flex', gap: 8 }}>
+                  <button
+                    type="button"
+                    onClick={() => { setForgotMode(false); setResetStatus(null) }}
+                    style={{
+                      flex: 1, padding: '8px 0', fontSize: 12, fontWeight: 600,
+                      background: 'none', border: '1.5px solid #C8C0A8', borderRadius: 4,
+                      cursor: 'pointer', color: '#8B7D6B', fontFamily: "'Georgia', serif",
+                    }}
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleSendReset}
+                    disabled={resetLoading}
+                    style={{
+                      flex: 1, padding: '8px 0', fontSize: 12, fontWeight: 700,
+                      background: '#2D3436', border: 'none', borderRadius: 4,
+                      cursor: resetLoading ? 'not-allowed' : 'pointer',
+                      color: '#FFFDF5', fontFamily: "'Georgia', serif",
+                    }}
+                  >
+                    {resetLoading ? 'Sending…' : 'Send Reset Link'}
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
         </div>
 
         {/* Footer link */}

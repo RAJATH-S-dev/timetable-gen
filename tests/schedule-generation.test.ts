@@ -380,6 +380,42 @@ describe('Edge cases', () => {
     const labSlots = result.slots.filter(s => s.subject_id === 's1');
     expect(labSlots.length).toBe(2);
   });
+  it('blocked_slots prevents teacher from being scheduled at blocked day/slot', async () => {
+    const input: ScheduleInput = {
+      department_id: 'TEST',
+      teachers: [{ id: 't1', name: 'Shared Teacher', is_available: true, max_daily_slots: 6 }],
+      subjects: [{ id: 's1', code: 'BLK1', weekly_credits: 3, preferred_room_type: 'lecture' }],
+      rooms: [{ id: 'r1', room_name: 'Room 1', capacity: 60, room_type: 'lecture' }],
+      assignments: [{ teacher_id: 't1', subject_id: 's1' }],
+      // Block teacher t1 on day 0 slot 0, day 0 slot 1, and day 1 slot 2
+      blocked_slots: [
+        { teacher_id: 't1', day: 0, slot: 0 },
+        { teacher_id: 't1', day: 0, slot: 1 },
+        { teacher_id: 't1', day: 1, slot: 2 },
+      ],
+      days_per_week: 5,
+      slots_per_day: 6,
+      lunch_slot_index: 3,
+      time_limit_seconds: 30,
+    };
+
+    const result = await runScheduler(input);
+    expect(result.success).toBe(true);
+    expect(result.slots).toHaveLength(3);
+
+    // Verify none of the blocked positions are used
+    for (const slot of result.slots) {
+      const day0 = slot.day_of_week === 1; // solver outputs 1-indexed
+      const day1 = slot.day_of_week === 2;
+      if (day0) {
+        expect(slot.slot_index, `Teacher should not be at day=1, slot=${slot.slot_index}`).not.toBe(0);
+        expect(slot.slot_index, `Teacher should not be at day=1, slot=${slot.slot_index}`).not.toBe(1);
+      }
+      if (day1) {
+        expect(slot.slot_index, `Teacher should not be at day=2, slot=${slot.slot_index}`).not.toBe(2);
+      }
+    }
+  });
 });
 
 // ────────────────────────────────────────────────────────────

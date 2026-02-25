@@ -23,7 +23,7 @@ export const dynamic = 'force-dynamic';
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const { department_id, semester } = body;
+    const { department_id, semester, section = 'A' } = body;
 
     if (!department_id) {
       return NextResponse.json({ error: 'department_id is required' }, { status: 400 });
@@ -120,6 +120,28 @@ export async function POST(request: NextRequest) {
       time_limit_seconds: 60,
     };
 
+    // ── Compute blocked_slots from other sections' timetables ──
+    // Fetch all slots for this department that belong to OTHER sections
+    const { data: otherSectionSlots } = await supabase
+      .from('timetable_slots')
+      .select('teacher_id, day_of_week, start_time')
+      .eq('department_id', department_id)
+      .neq('section', section);
+
+    if (otherSectionSlots && otherSectionSlots.length > 0) {
+      // Convert start_time to slot_index (09:00 = 0, 10:00 = 1, etc.)
+      const timeToSlot = (t: string) => {
+        const [h, m] = t.split(':').map(Number);
+        return Math.floor((h * 60 + m - 9 * 60) / 60);
+      };
+
+      solverInput.blocked_slots = otherSectionSlots.map((s) => ({
+        teacher_id: s.teacher_id,
+        day: s.day_of_week - 1,   // solver uses 0-indexed days
+        slot: timeToSlot(s.start_time),
+      }));
+    }
+
     const result = await runScheduler(solverInput);
 
     if (!result.success) {
@@ -139,6 +161,7 @@ export async function POST(request: NextRequest) {
       .from('timetable_slots')
       .delete()
       .eq('department_id', department_id)
+      .eq('section', section)
       .eq('is_locked', false);
 
     if (deleteError) {
@@ -154,6 +177,7 @@ export async function POST(request: NextRequest) {
       const { start_time, end_time } = slotIndexToTime(slot.slot_index);
       return {
         department_id,
+        section,
         teacher_id: slot.teacher_id,
         subject_id: slot.subject_id,
         room_id: slot.room_id || null,
@@ -186,6 +210,7 @@ export async function POST(request: NextRequest) {
       new_data: {
         department_id,
         semester,
+        section,
         slots_generated: result.slots.length,
         solver_status: result.status,
       },
@@ -211,6 +236,7 @@ export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url);
     const department_id = searchParams.get('department_id');
+    const section = searchParams.get('section') || 'A';
 
     if (!department_id) {
       return NextResponse.json(
@@ -234,11 +260,13 @@ export async function GET(request: NextRequest) {
         is_double_start,
         metadata,
         created_at,
+        section,
         teachers  ( id, name, email ),
         subjects  ( id, code, title, weekly_credits, preferred_room_type ),
         room_pool ( id, room_name, room_type, capacity )
       `)
       .eq('department_id', department_id)
+      .eq('section', section)
       .order('day_of_week', { ascending: true })
       .order('start_time', { ascending: true });
 
@@ -261,6 +289,7 @@ export async function DELETE(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url);
     const department_id = searchParams.get('department_id');
+    const section = searchParams.get('section') || 'A';
 
     if (!department_id) {
       return NextResponse.json({ error: 'department_id is required' }, { status: 400 });
@@ -272,6 +301,7 @@ export async function DELETE(request: NextRequest) {
       .from('timetable_slots')
       .delete()
       .eq('department_id', department_id)
+      .eq('section', section)
       .eq('is_locked', false);
 
     if (error) {

@@ -37,6 +37,7 @@ export interface ScheduleInput {
   subjects: Subject[];
   rooms: Room[];
   assignments: TeacherSubjectAssignment[];
+  blocked_slots?: { teacher_id: string; day: number; slot: number }[];
   days_per_week: number;
   slots_per_day: number;
   lunch_slot_index: number;

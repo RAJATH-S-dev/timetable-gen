@@ -1,0 +1,22 @@
+// Type declarations for Google Identity Services (GIS)
+declare namespace google.accounts.oauth2 {
+  interface TokenClient {
+    requestAccessToken(config?: { prompt?: string }): void;
+  }
+
+  interface TokenResponse {
+    access_token: string;
+    error?: string;
+    expires_in: number;
+    scope: string;
+    token_type: string;
+  }
+
+  function initTokenClient(config: {
+    client_id: string;
+    scope: string;
+    callback: (response: TokenResponse) => void;
+  }): TokenClient;
+
+  function revoke(token: string, callback: () => void): void;
+}

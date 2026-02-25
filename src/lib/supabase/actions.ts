@@ -37,6 +37,22 @@ export async function signOutAdmin() {
   if (error) throw error
 }
 
+// Change password (for logged-in users)
+export async function changePassword(newPassword: string) {
+  const supabase = createClient()
+  const { error } = await supabase.auth.updateUser({ password: newPassword })
+  if (error) throw error
+}
+
+// Send password reset email (for login page "Forgot Password")
+export async function resetPasswordForEmail(email: string) {
+  const supabase = createClient()
+  const { error } = await supabase.auth.resetPasswordForEmail(email, {
+    redirectTo: `${window.location.origin}/login`,
+  })
+  if (error) throw error
+}
+
 // 3. Data Bridge: The missing function causing your error
 export async function upsertTeacherData(teachers: any[]) {
   const supabase = createClient()
