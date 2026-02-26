@@ -49,6 +49,7 @@ interface EditorProps {
   legend: { code: string; title: string; initials: string; faculty: string }[];
   onRefresh: () => void;
   institutionName: string;
+  departmentName: string;
   tableTitle: string;
   semesterInfo: string;
   roomNo: string;
@@ -60,6 +61,7 @@ export default function TimetableEditor({
   legend,
   onRefresh,
   institutionName,
+  departmentName,
   tableTitle,
   semesterInfo,
   roomNo,
@@ -299,6 +301,7 @@ export default function TimetableEditor({
         grid={initialGrid}
         subjectLegend={legend}
         institutionName={institutionName}
+        departmentName={departmentName}
         tableTitle={tableTitle}
         semesterInfo={semesterInfo}
         roomNo={roomNo}
@@ -318,7 +321,7 @@ export default function TimetableEditor({
 
       {/* Editor Sheet Panel */}
       <Sheet open={isPanelOpen} onOpenChange={setIsPanelOpen}>
-        <SheetContent className="w-[500px] sm:w-[600px] overflow-y-auto bg-[#FFFDF5]">
+        <SheetContent className="w-[580px] sm:w-[720px] overflow-y-auto bg-[#FFFDF5]">
           <SheetHeader className="mb-4">
             <SheetTitle className="text-xl font-serif text-[#2D3436]">
               {isEmptySlot ? "Place Subject" : "Edit Slot"}
@@ -361,8 +364,8 @@ export default function TimetableEditor({
                               key={String(s)}
                               onClick={() => setSemesterPicker(s === "all" ? "all" : s as number)}
                               className={`px-2 py-0.5 rounded text-[10px] font-bold border transition-all ${semesterPicker === s
-                                  ? "bg-[#2D3436] text-white border-[#2D3436]"
-                                  : "bg-white text-stone-500 border-stone-300 hover:border-stone-400"
+                                ? "bg-[#2D3436] text-white border-[#2D3436]"
+                                : "bg-white text-stone-500 border-stone-300 hover:border-stone-400"
                                 }`}
                             >
                               {s === "all" ? "All" : s}

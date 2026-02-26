@@ -11,7 +11,21 @@ export function Header() {
   const [confirmPassword, setConfirmPassword] = useState('')
   const [pwLoading, setPwLoading] = useState(false)
   const [pwMessage, setPwMessage] = useState<{ type: 'ok' | 'err'; text: string } | null>(null)
+  const [searchQuery, setSearchQuery] = useState('')
   const router = useRouter()
+
+  const allPages = [
+    { label: 'Dashboard', desc: 'Department overview & stats', href: '/dashboard', icon: '📊', keywords: 'dashboard overview home stats' },
+    { label: 'Faculty Registry', desc: 'Manage teachers & assignments', href: '/faculty', icon: '👥', keywords: 'faculty teacher registry assign' },
+    { label: 'Subject Registry', desc: 'Subjects, credits, semesters', href: '/subjects', icon: '📚', keywords: 'subject course credit semester' },
+    { label: 'Timetable', desc: 'Generate & edit schedules', href: '/timetable', icon: '📅', keywords: 'timetable schedule generate solver' },
+  ]
+
+  const searchResults = searchQuery.length > 0
+    ? allPages.filter(p =>
+      (p.label + ' ' + p.keywords).toLowerCase().includes(searchQuery.toLowerCase())
+    )
+    : []
 
   const handleSignOut = async () => {
     try {
@@ -63,12 +77,23 @@ export function Header() {
           size={15}
           style={{
             position: 'absolute', left: 10, top: '50%',
-            transform: 'translateY(-50%)', color: '#B0A898',
+            transform: 'translateY(-50%)', color: '#B0A898', zIndex: 1,
           }}
         />
         <input
           type="text"
-          placeholder="Search faculty or schedules..."
+          placeholder="Search pages..."
+          value={searchQuery}
+          onChange={(e) => setSearchQuery(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter' && searchResults.length > 0) {
+              router.push(searchResults[0].href)
+              setSearchQuery('')
+            }
+            if (e.key === 'Escape') {
+              setSearchQuery('')
+            }
+          }}
           style={{
             width: '100%',
             background: '#F0EBE0',
@@ -81,6 +106,35 @@ export function Header() {
             outline: 'none',
           }}
         />
+        {searchQuery.length > 0 && searchResults.length > 0 && (
+          <div style={{
+            position: 'absolute', top: '100%', left: 0, right: 0, marginTop: 4,
+            background: '#FFFDF5', border: '1.5px solid #E2D9C5', borderRadius: 4,
+            boxShadow: '0 4px 12px rgba(0,0,0,0.08)', zIndex: 50, overflow: 'hidden',
+          }}>
+            {searchResults.map((r) => (
+              <button
+                key={r.href}
+                onClick={() => { router.push(r.href); setSearchQuery('') }}
+                style={{
+                  display: 'flex', alignItems: 'center', gap: 10,
+                  width: '100%', padding: '10px 14px', background: 'none',
+                  border: 'none', borderBottom: '1px solid #F0EBE0',
+                  cursor: 'pointer', textAlign: 'left', fontFamily: "'Georgia', serif",
+                  transition: 'background 0.1s',
+                }}
+                onMouseEnter={e => e.currentTarget.style.background = '#F0EBE0'}
+                onMouseLeave={e => e.currentTarget.style.background = 'none'}
+              >
+                <span style={{ fontSize: 16 }}>{r.icon}</span>
+                <div>
+                  <p style={{ fontSize: 12, fontWeight: 700, color: '#2D3436', margin: 0 }}>{r.label}</p>
+                  <p style={{ fontSize: 10, color: '#8B7D6B', margin: 0 }}>{r.desc}</p>
+                </div>
+              </button>
+            ))}
+          </div>
+        )}
       </div>
 
       <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>

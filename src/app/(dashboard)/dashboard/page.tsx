@@ -110,12 +110,6 @@ export default function DashboardOverview() {
       href: "/timetable",
       icon: "⚡",
     },
-    {
-      title: "Bulk Ingest Data",
-      desc: "Upload a faculty PDF to auto-populate teachers and subjects.",
-      href: "/workspace",
-      icon: "📄",
-    },
   ];
 
   const formatDate = (dateStr: string | null) => {

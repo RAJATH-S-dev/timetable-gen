@@ -17,6 +17,7 @@ interface TimetableGridProps {
   grid: (SlotData | null)[][];
   subjectLegend: { code: string; title: string; initials: string; faculty: string }[];
   institutionName: string;
+  departmentName: string;
   tableTitle: string;
   semesterInfo: string;
   roomNo: string;
@@ -43,6 +44,7 @@ export default function TimetableGrid({
   grid,
   subjectLegend,
   institutionName,
+  departmentName,
   tableTitle,
   semesterInfo,
   roomNo,
@@ -226,7 +228,10 @@ export default function TimetableGrid({
         <div style={{ fontSize: 15, fontWeight: 700, color: "#2D3436", letterSpacing: 1 }}>
           {institutionName}
         </div>
-        <div style={{ fontSize: 13, fontWeight: 700, color: "#2D3436", marginTop: 2 }}>
+        <div style={{ fontSize: 12, fontWeight: 700, color: "#2D3436", marginTop: 2, letterSpacing: 0.5 }}>
+          {departmentName}
+        </div>
+        <div style={{ fontSize: 13, fontWeight: 700, color: "#2D3436", marginTop: 4 }}>
           {tableTitle}
         </div>
         <div style={{

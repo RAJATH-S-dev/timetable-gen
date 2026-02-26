@@ -115,6 +115,7 @@ export default function TimetableClient({ departmentId }: Props) {
 
   // ── Editable header fields ──
   const [institutionName, setInstitutionName] = useState("MAHARAJA INSTITUTE OF TECHNOLOGY MYSORE");
+  const [departmentName, setDepartmentName] = useState("Department of Information Science & Engineering");
   const [tableTitle, setTableTitle] = useState("TIME TABLE - 2024-25");
   const [semesterInfo, setSemesterInfo] = useState("I Semester Section – D (IS)");
   const [roomNo, setRoomNo] = useState("");
@@ -296,11 +297,17 @@ export default function TimetableClient({ departmentId }: Props) {
       {editingHeader && (
         <div style={{ maxWidth: 1100, margin: "0 auto 16px", background: "#FFFDF5", border: "1.5px solid #C8C0A8", borderRadius: 4, padding: "16px 20px" }}>
           <p style={{ fontSize: 11, fontWeight: 700, color: "#8B7D6B", textTransform: "uppercase", letterSpacing: 1, margin: "0 0 12px" }}>Edit Timetable Header</p>
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr 1fr", gap: 12 }}>
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginBottom: 12 }}>
             <div>
               <label style={{ fontSize: 10, fontWeight: 700, color: "#8B7D6B", display: "block", marginBottom: 4 }}>INSTITUTION NAME</label>
               <input style={inputStyle} value={institutionName} onChange={e => setInstitutionName(e.target.value)} />
             </div>
+            <div>
+              <label style={{ fontSize: 10, fontWeight: 700, color: "#8B7D6B", display: "block", marginBottom: 4 }}>DEPARTMENT</label>
+              <input style={inputStyle} value={departmentName} onChange={e => setDepartmentName(e.target.value)} />
+            </div>
+          </div>
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 12 }}>
             <div>
               <label style={{ fontSize: 10, fontWeight: 700, color: "#8B7D6B", display: "block", marginBottom: 4 }}>ACADEMIC YEAR</label>
               <input style={inputStyle} value={tableTitle} onChange={e => setTableTitle(e.target.value)} placeholder="e.g. TIME TABLE - 2024-25" />
@@ -329,6 +336,7 @@ export default function TimetableClient({ departmentId }: Props) {
             legend={legend}
             onRefresh={fetchTimetable}
             institutionName={institutionName}
+            departmentName={departmentName}
             tableTitle={tableTitle}
             semesterInfo={semesterInfo}
             roomNo={roomNo}
