@@ -15,12 +15,15 @@ const TIME_SLOTS = [
 ];
 
 // Maps start_time string to our slot index (0–5)
+// Uses same formula as timetable-client: slot = floor((totalMinutes - 9*60) / 60)
+// DB stores hourly times: 09:00, 10:00, 11:00, 12:00, 13:00, 14:00
 function timeToSlotIndex(startTime: string): number {
-  const map: Record<string, number> = {
-    "09:00:00": 0, "10:00:00": 1, "11:15:00": 2,
-    "12:15:00": 3, "14:00:00": 4, "15:00:00": 5,
-  };
-  return map[startTime] ?? -1;
+  const parts = startTime.split(":");
+  const h = parseInt(parts[0], 10);
+  const m = parseInt(parts[1] ?? "0", 10);
+  const slotIdx = Math.floor((h * 60 + m - 9 * 60) / 60);
+  if (slotIdx < 0 || slotIdx > 5) return -1;
+  return slotIdx;
 }
 
 interface ScheduleSlot {
@@ -28,6 +31,8 @@ interface ScheduleSlot {
   period: number;    // 0-indexed
   subjectCode: string;
   departmentId: string;
+  isLab: boolean;
+  section: string;
 }
 
 interface TeacherScheduleGridProps {
@@ -55,7 +60,7 @@ export default function TeacherScheduleGrid({
 
       const { data: slots } = await supabase
         .from("timetable_slots")
-        .select("day_of_week, start_time, subjects(code), department_id")
+        .select("day_of_week, start_time, is_lab, section, subjects(code), department_id")
         .eq("teacher_id", teacherId);
 
       // Build 5×6 grid (5 days × 6 periods)
@@ -68,12 +73,23 @@ export default function TeacherScheduleGrid({
         const dayIdx = s.day_of_week - 1; // 1-indexed → 0-indexed
         const periodIdx = timeToSlotIndex(s.start_time);
         if (dayIdx >= 0 && dayIdx < 5 && periodIdx >= 0 && periodIdx < 6) {
-          newGrid[dayIdx][periodIdx] = {
-            day: dayIdx,
-            period: periodIdx,
-            subjectCode: s.subjects?.code ?? "—",
-            departmentId: s.department_id,
-          };
+          const existing = newGrid[dayIdx][periodIdx];
+          if (existing) {
+            // Same slot occupied in multiple sections — merge section labels
+            const secs = existing.section ? existing.section.split(', ') : [];
+            const newSec = s.section ?? '';
+            if (newSec && !secs.includes(newSec)) secs.push(newSec);
+            existing.section = secs.sort().join(', ');
+          } else {
+            newGrid[dayIdx][periodIdx] = {
+              day: dayIdx,
+              period: periodIdx,
+              subjectCode: s.subjects?.code ?? "—",
+              departmentId: s.department_id,
+              isLab: !!s.is_lab,
+              section: s.section ?? '',
+            };
+          }
         }
       });
 
@@ -226,6 +242,12 @@ export default function TeacherScheduleGrid({
                           lineHeight: 1.3,
                         }}>
                           {cellData.subjectCode}
+                          {cellData.isLab && (
+                            <span style={{ display: "block", fontSize: 7, color: "#1A5276", fontWeight: 700 }}>*lab</span>
+                          )}
+                          {cellData.section && (
+                            <span style={{ display: "block", fontSize: 7, color: "#636E72", fontWeight: 600 }}>Sec {cellData.section}</span>
+                          )}
                         </span>
                       )}
                     </td>
