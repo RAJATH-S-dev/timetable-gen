@@ -10,7 +10,14 @@ interface Stats {
   totalSubjects: number;
   totalSlots: number;
   lockedSlots: number;
+  timetableCount: number;
   lastGenerated: string | null;
+}
+
+interface TimetableDetail {
+  section: string;
+  slotCount: number;
+  lastGenerated: string;
 }
 
 export default function DashboardOverview() {
@@ -19,9 +26,12 @@ export default function DashboardOverview() {
     totalSubjects: 0,
     totalSlots: 0,
     lockedSlots: 0,
+    timetableCount: 0,
     lastGenerated: null,
   });
   const [loading, setLoading] = useState(true);
+  const [ttDetails, setTtDetails] = useState<TimetableDetail[]>([]);
+  const [showTtBreakdown, setShowTtBreakdown] = useState(false);
   const supabase = createClient();
 
   useEffect(() => {
@@ -47,11 +57,37 @@ export default function DashboardOverview() {
         .order("created_at", { ascending: false })
         .limit(1);
 
+      // Count distinct generated timetables (unique section values)
+      const { data: sectionSlots } = await supabase
+        .from("timetable_slots")
+        .select("section, created_at")
+        .order("created_at", { ascending: false });
+
+      // Group by section
+      const sectionMap = new Map<string, { count: number; latest: string }>();
+      (sectionSlots ?? []).forEach((s: any) => {
+        const key = s.section || 'A';
+        const existing = sectionMap.get(key);
+        if (!existing) {
+          sectionMap.set(key, { count: 1, latest: s.created_at });
+        } else {
+          existing.count++;
+          if (s.created_at > existing.latest) existing.latest = s.created_at;
+        }
+      });
+
+      const details: TimetableDetail[] = Array.from(sectionMap.entries())
+        .map(([section, info]) => ({ section, slotCount: info.count, lastGenerated: info.latest }))
+        .sort((a, b) => a.section.localeCompare(b.section));
+
+      setTtDetails(details);
+
       setStats({
         totalFaculty: facultyCount ?? 0,
         totalSubjects: subjectCount ?? 0,
         totalSlots: slotCount ?? 0,
         lockedSlots: lockedCount ?? 0,
+        timetableCount: details.length,
         lastGenerated: latestSlot?.[0]?.created_at ?? null,
       });
       setLoading(false);
@@ -83,9 +119,17 @@ export default function DashboardOverview() {
       href: "/timetable",
     },
     {
+      label: "Timetables Generated",
+      value: stats.timetableCount,
+      icon: Calendar,
+      color: "#4834D4",
+      href: "#timetable-breakdown",
+      onClick: () => setShowTtBreakdown(v => !v),
+    },
+    {
       label: "Locked / Manual",
       value: stats.lockedSlots,
-      icon: Calendar,
+      icon: TableProperties,
       color: "#C0392B",
       href: "/timetable",
     },
@@ -143,19 +187,21 @@ export default function DashboardOverview() {
         gap: 14,
         marginBottom: 32,
       }}>
-        {statCards.map((card) => (
-          <Link key={card.label} href={card.href} style={{ textDecoration: 'none' }}>
+        {statCards.map((card) => {
+          const inner = (
             <div
+              key={card.label}
+              onClick={card.onClick}
               style={{
                 background: '#FFFDF5',
-                border: '1.5px solid #E2D9C5',
+                border: card.onClick && showTtBreakdown ? '1.5px solid #4834D4' : '1.5px solid #E2D9C5',
                 borderRadius: 6,
                 padding: '18px 20px',
                 transition: 'border-color 0.2s, transform 0.2s',
                 cursor: 'pointer',
               }}
-              onMouseEnter={e => { e.currentTarget.style.borderColor = '#C8C0A8'; e.currentTarget.style.transform = 'translateY(-2px)'; }}
-              onMouseLeave={e => { e.currentTarget.style.borderColor = '#E2D9C5'; e.currentTarget.style.transform = 'translateY(0)'; }}
+              onMouseEnter={e => { e.currentTarget.style.borderColor = card.onClick ? '#4834D4' : '#C8C0A8'; e.currentTarget.style.transform = 'translateY(-2px)'; }}
+              onMouseLeave={e => { e.currentTarget.style.borderColor = card.onClick && showTtBreakdown ? '#4834D4' : '#E2D9C5'; e.currentTarget.style.transform = 'translateY(0)'; }}
             >
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
                 <span style={{
@@ -176,9 +222,54 @@ export default function DashboardOverview() {
                 {loading ? '…' : card.value}
               </p>
             </div>
-          </Link>
-        ))}
+          );
+          if (card.onClick) return <div key={card.label}>{inner}</div>;
+          return <Link key={card.label} href={card.href} style={{ textDecoration: 'none' }}>{inner}</Link>;
+        })}
       </div>
+
+      {/* Timetable Breakdown Panel */}
+      {showTtBreakdown && (
+        <div style={{
+          background: '#FFFDF5', border: '1.5px solid #C8C0A8', borderRadius: 6,
+          padding: '18px 22px', marginBottom: 24, fontFamily: "'Georgia', serif",
+        }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 }}>
+            <p style={{ fontSize: 11, fontWeight: 700, color: '#8B7D6B', textTransform: 'uppercase', letterSpacing: 1, margin: 0 }}>
+              Generated Timetables — Breakdown by Section
+            </p>
+            <button onClick={() => setShowTtBreakdown(false)} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 14, color: '#8B7D6B' }}>✕</button>
+          </div>
+          {ttDetails.length === 0 ? (
+            <p style={{ fontSize: 13, color: '#8B7D6B', margin: 0 }}>No timetables have been generated yet.</p>
+          ) : (
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))', gap: 12 }}>
+              {ttDetails.map(d => (
+                <Link key={d.section} href={`/timetable`} style={{ textDecoration: 'none' }}>
+                  <div style={{
+                    border: '1px solid #E2D9C5', borderRadius: 4, padding: '14px 16px',
+                    background: '#FDFAF0', transition: 'border-color 0.15s, transform 0.15s', cursor: 'pointer',
+                  }}
+                    onMouseEnter={e => { e.currentTarget.style.borderColor = '#4834D4'; e.currentTarget.style.transform = 'translateY(-1px)'; }}
+                    onMouseLeave={e => { e.currentTarget.style.borderColor = '#E2D9C5'; e.currentTarget.style.transform = 'translateY(0)'; }}
+                  >
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
+                      <span style={{ fontSize: 16, fontWeight: 700, color: '#4834D4', fontFamily: "'Courier New', monospace" }}>Section {d.section}</span>
+                      <Calendar size={14} color="#4834D4" />
+                    </div>
+                    <p style={{ fontSize: 11, color: '#636E72', margin: '0 0 2px', fontWeight: 600 }}>
+                      {d.slotCount} slots scheduled
+                    </p>
+                    <p style={{ fontSize: 10, color: '#8B7D6B', margin: 0 }}>
+                      Generated: {formatDate(d.lastGenerated)}
+                    </p>
+                  </div>
+                </Link>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
 
       {/* Last Generation + Engine Status */}
       <div style={{

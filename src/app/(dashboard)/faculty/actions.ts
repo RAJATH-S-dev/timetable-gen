@@ -3,6 +3,23 @@
 import { createClient } from '@/lib/supabase/server';
 import { revalidatePath } from 'next/cache';
 
+export async function addTeacherAction(data: { name: string; email: string; max_daily_slots?: number }) {
+  const supabase = await createClient();
+
+  const { error } = await supabase
+    .from('teachers')
+    .insert({
+      name: data.name,
+      email: data.email,
+      department_id: 'MIT-ISE',
+      is_available: true,
+      max_daily_slots: data.max_daily_slots ?? 4,
+    });
+
+  if (error) throw new Error(error.message);
+  revalidatePath('/faculty');
+}
+
 export async function updateTeacherAction(id: string, updates: any) {
   const supabase = await createClient();
 
