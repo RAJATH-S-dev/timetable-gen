@@ -1,0 +1,22 @@
+services:
+  - type: web
+    name: timetable-gen
+    runtime: docker
+    dockerfilePath: ./Dockerfile
+    plan: free
+    region: oregon
+    envVars:
+      - key: NEXT_PUBLIC_SUPABASE_URL
+        sync: false
+      - key: NEXT_PUBLIC_SUPABASE_ANON_KEY
+        sync: false
+    buildFilter:
+      paths:
+        - src/**
+        - engine/**
+        - public/**
+        - package.json
+        - package-lock.json
+        - Dockerfile
+        - next.config.ts
+    healthCheckPath: /
